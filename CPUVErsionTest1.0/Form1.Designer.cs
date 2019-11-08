@@ -31,6 +31,7 @@
             this.drawing_panel = new System.Windows.Forms.PictureBox();
             this.cpu_use = new System.Windows.Forms.RadioButton();
             this.use_gpu = new System.Windows.Forms.RadioButton();
+            this.label1 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.drawing_panel)).BeginInit();
             this.SuspendLayout();
             // 
@@ -41,7 +42,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.drawing_panel.BackColor = System.Drawing.Color.White;
             this.drawing_panel.Location = new System.Drawing.Point(2, 36);
-            this.drawing_panel.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.drawing_panel.Margin = new System.Windows.Forms.Padding(2);
             this.drawing_panel.Name = "drawing_panel";
             this.drawing_panel.Size = new System.Drawing.Size(849, 561);
             this.drawing_panel.TabIndex = 0;
@@ -60,7 +61,7 @@
             this.cpu_use.AutoSize = true;
             this.cpu_use.Location = new System.Drawing.Point(12, 12);
             this.cpu_use.Name = "cpu_use";
-            this.cpu_use.Size = new System.Drawing.Size(53, 19);
+            this.cpu_use.Size = new System.Drawing.Size(47, 17);
             this.cpu_use.TabIndex = 1;
             this.cpu_use.Text = "CPU";
             this.cpu_use.UseVisualStyleBackColor = true;
@@ -74,22 +75,32 @@
             this.use_gpu.Checked = true;
             this.use_gpu.Location = new System.Drawing.Point(71, 12);
             this.use_gpu.Name = "use_gpu";
-            this.use_gpu.Size = new System.Drawing.Size(54, 19);
+            this.use_gpu.Size = new System.Drawing.Size(48, 17);
             this.use_gpu.TabIndex = 1;
             this.use_gpu.TabStop = true;
             this.use_gpu.Text = "GPU";
             this.use_gpu.UseVisualStyleBackColor = true;
             this.use_gpu.CheckedChanged += new System.EventHandler(this.use_gpu_CheckedChanged);
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(191, 12);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(35, 13);
+            this.label1.TabIndex = 2;
+            this.label1.Text = "label1";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(852, 598);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.use_gpu);
             this.Controls.Add(this.cpu_use);
             this.Controls.Add(this.drawing_panel);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "Form1";
             this.Text = "Form1";
             ((System.ComponentModel.ISupportInitialize)(this.drawing_panel)).EndInit();
@@ -103,6 +114,7 @@
         private System.Windows.Forms.PictureBox drawing_panel;
         private System.Windows.Forms.RadioButton cpu_use;
         private System.Windows.Forms.RadioButton use_gpu;
+        private System.Windows.Forms.Label label1;
     }
 }
 
