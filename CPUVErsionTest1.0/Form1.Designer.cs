@@ -28,10 +28,13 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.drawing_panel = new System.Windows.Forms.PictureBox();
             this.cpu_use = new System.Windows.Forms.RadioButton();
             this.use_gpu = new System.Windows.Forms.RadioButton();
             this.label1 = new System.Windows.Forms.Label();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.drawing_panel)).BeginInit();
             this.SuspendLayout();
             // 
@@ -48,10 +51,6 @@
             this.drawing_panel.TabIndex = 0;
             this.drawing_panel.TabStop = false;
             this.drawing_panel.SizeChanged += new System.EventHandler(this.drawing_panel_SizeChanged);
-            this.drawing_panel.Paint += new System.Windows.Forms.PaintEventHandler(this.drawing_panel_Paint);
-            this.drawing_panel.MouseDown += new System.Windows.Forms.MouseEventHandler(this.drawing_panel_MouseDown);
-            this.drawing_panel.MouseMove += new System.Windows.Forms.MouseEventHandler(this.drawing_panel_MouseMove);
-            this.drawing_panel.MouseUp += new System.Windows.Forms.MouseEventHandler(this.drawing_panel_MouseUp);
             // 
             // cpu_use
             // 
@@ -91,11 +90,27 @@
             this.label1.TabIndex = 2;
             this.label1.Text = "label1";
             // 
+            // timer1
+            // 
+            this.timer1.Interval = 50;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(286, 3);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(54, 28);
+            this.button1.TabIndex = 3;
+            this.button1.Text = "start";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(852, 598);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.use_gpu);
             this.Controls.Add(this.cpu_use);
@@ -115,6 +130,8 @@
         private System.Windows.Forms.RadioButton cpu_use;
         private System.Windows.Forms.RadioButton use_gpu;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Button button1;
     }
 }
 

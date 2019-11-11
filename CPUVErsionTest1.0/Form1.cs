@@ -1,4 +1,4 @@
-﻿#define BY_GPU
+﻿//#define RANGE = 30
 
 using Alea;
 using Alea.CSharp;
@@ -17,89 +17,58 @@ using System.Windows.Forms;
 
 namespace CPUVErsionTest1._0
 {
-    class Elektrons
-    {
-        public List<int> elektrons_x;
-        public List<int> elektrons_y;
-        public List<int> elektrons_charge;
-        public List<int> elektrons_move_x;
-        public List<int> elektrons_move_y;
 
-        public Elektrons()
-        {
-            elektrons_x = new List<int>();
-            elektrons_y = new List<int>();
-            elektrons_charge = new List<int>();
-            elektrons_move_x = new List<int>();
-            elektrons_move_y = new List<int>();
-        }
-
-        public void Add(int x, int y, int charge, int move_x,int move_y)
-        {
-            elektrons_x.Add(x);
-            elektrons_y.Add(y);
-            elektrons_charge.Add(charge);
-            elektrons_move_x.Add(move_x);
-            elektrons_move_y.Add(move_y);
-        }
-
-        public void ToArray(out int[] x, out int[] y, out int[] charge, out int [] move_x, out int [] move_y) 
-        {
-            x = elektrons_x.ToArray();
-            y = elektrons_y.ToArray();
-            charge = elektrons_charge.ToArray();
-            move_x = elektrons_move_x.ToArray();
-            move_y = elektrons_move_y.ToArray();
-        }
-
-        public void FromArray(int[] x, int[] y, int[] charge, int [] move_x, int [] move_y)
-        {
-            elektrons_x = new List<int>(x);
-            elektrons_y = new List<int>(y);
-            elektrons_charge = new List<int>(charge);
-            elektrons_move_x = new List<int>(move_x);
-            elektrons_move_y = new List<int>(move_y);
-        }
-    }
     public partial class Form1 : Form
     {
         public Form1()
         {
             InitializeComponent();
-            elektrons = new Elektrons();
+            GenerateElectrons();
+            values = new float[drawing_panel.Width, drawing_panel.Height];
+            solve_by_GPU = true;
+            ShowResult();
+        }
+
+        private Electrons electrons;
+       private int electron_count = 100000;
+        private int max_charge = 100;
+        private float[,] values;
+        private readonly int Bias = 5;
+        private int moving_electron_indeks = -1;
+        private bool solve_by_GPU = false;
+        private byte[] r_val;
+        private byte[] g_val;
+        private byte[] b_val;
+
+
+        private void GenerateElectrons()
+        {
+            electrons = new Electrons();
             Random rand = new Random();
-            for(int i = 0; i < elektron_count; i++)
+            for (int i = 0; i < electron_count; i++)
             {
 
                 int x = rand.Next(0, drawing_panel.Width);
                 int y = rand.Next(0, drawing_panel.Height);
-                int charge = rand.Next(-max_charge,max_charge);
-                int move_x = rand.Next(0,15);
-                int move_y = rand.Next(0,15);
+                int charge = rand.Next(-max_charge, max_charge);
+                int move_x = rand.Next(-10, 10);
+                int move_y = rand.Next(-10, 10);
 
-                elektrons.Add(x, y, charge, move_x, move_y);
+                electrons.Add(x, y, charge, move_x, move_y);
             }
-            values = new float[drawing_panel.Width, drawing_panel.Height];
-            solve_by_GPU = true;
+            CreateColorValues();
         }
-
-        private Elektrons elektrons;
-        private int elektron_count = 100;
-        private int max_charge = 100;
-        private float[,] values;
-        private readonly int Bias = 5;
-        private int moving_elektron_indeks = -1;
-        private bool solve_by_GPU = false;
-
-        private float ComputeCharge(int x, int y, Elektrons elektrons_)
+        private float ComputeCharge(int x, int y, Electrons electrons_)
         {
             float result = 0;
-            foreach (var e in elektrons_)
+            for(int i = 0; i < electrons_.electrons_x_.Length; i++)
             {
-                result += (float)(e.charge / (float)Math.Pow(Len(x, y, e.x, e.y), 2));
-                if (x == e.x && y == e.y) return 0;
+                result += (float)(electrons_.electrons_charge_[i] / (float)Len(x, y, electrons_.electrons_x_[i], electrons_.electrons_y_[i]));
+                if (x == electrons_.electrons_x_[i] && y == electrons_.electrons_y_[i]) return 0;
             }
             return result;
+
+        
         }
 
         private float Len(int x, int y, int cx, int cy)
@@ -107,91 +76,140 @@ namespace CPUVErsionTest1._0
             int diffx = x - cx;
             int diffy = y - cy;
 
-            return (float)Math.Sqrt(diffx * diffx + diffy * diffy);
+            return (float)(diffx * diffx + diffy * diffy);
         }
 
-        unsafe private void ShowResult(Graphics e)
+        unsafe private void ShowResult()
         {
             Stopwatch sw = new Stopwatch();
             Stopwatch sw1 = new Stopwatch();
             sw.Start();
-            var pic = new Bitmap(drawing_panel.Width, drawing_panel.Height);
-           
+            Bitmap pic;
+
             float max = 10;
             if (!solve_by_GPU)
             {
+                pic= new Bitmap(drawing_panel.Width, drawing_panel.Height);
+                for (int i = 0; i < electrons.electrons_x_.Length; i ++)
+                {
+
+                    int el_x = electrons.electrons_x_[i];
+                    int el_y = electrons.electrons_y_[i];
+                    el_x += electrons.electrons_move_x_[i];
+                    el_y += electrons.electrons_move_y_[i];
+
+                    if (el_y >= drawing_panel.Height || el_y < 0)
+                    {
+                        electrons.electrons_move_y_[i] *= -1;
+                    }
+                    else
+                    {
+                        electrons.electrons_y_[i] = el_y;
+                    }
+                    if (el_x >= drawing_panel.Width || el_x < 0)
+                    {
+                        electrons.electrons_move_x_[i] *= -1;
+                    }
+                    else
+                    {
+
+                        electrons.electrons_x_[i] = el_x;
+                    }
+
+                }
                 var modified_pic = new BmpPixelSnoop(pic);
-                for (int i = 0; i < drawing_panel.Width; i++)
+                Parallel.For(0, drawing_panel.Width, i =>
+                //for (int i = 0; i < drawing_panel.Width; i++)
                 {
                     for (int j = 0; j < drawing_panel.Height; j++)
                     {
-                        values[i, j] = ComputeCharge(i, j, elektrons);
-                        var col = MapRainbowColor((values[i, j] + 1), max, -max);
+                        var col = MapRainbowColor(ComputeCharge(i, j, electrons), max, -max);
                         modified_pic.SetPixel(i, j, col.r, col.g, col.b);
                     }
-                }
+                });
                 modified_pic.Dispose();
             }
             else
             {
                 byte[] mod;
-                
-                SolveByGpu(elektrons, drawing_panel.Width, drawing_panel.Height, out mod);
-                
+                string ts;
+                SolveByGpu(electrons, drawing_panel.Width, drawing_panel.Height, out mod, out ts,r_val,g_val,b_val);
 
-                fixed (byte* ptr = mod)
+               // label1.Text = ts;
+
+                fixed(byte* ptr = mod)
                 {
-                    pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4*drawing_panel.Width,
+                    pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4 * drawing_panel.Width,
                                     PixelFormat.Format32bppArgb, new IntPtr(ptr));
                 }
-                
-                
+
+
             }
 
             //drawing_panel.Image = pic;
             //pic.Dispose();
+           
             sw1.Start();
-            e.DrawImageUnscaled(pic, 0, 0);
-            //drawing_panel.Image = pic;
-
-            label1.Text = sw1.ElapsedMilliseconds.ToString();
-            foreach (var el in elektrons)
-            {
-                e.FillEllipse(Brushes.LightGray, el.x - Bias, el.y - Bias, 2 * Bias, 2 * Bias);
-                if (el.charge > 0)
-                    e.DrawString("+", SystemFonts.DefaultFont, Brushes.Black, el.x - Bias, el.y - Bias - 2);
-                else
-                    e.DrawString("-", SystemFonts.DefaultFont, Brushes.Black, el.x - Bias, el.y - Bias - 2);
-            }
+            //e.DrawImageUnscaled(pic, 0, 0);
+            drawing_panel.Image = pic;
+           // pic.Dispose();
             sw1.Stop();
+            label1.Text = sw1.ElapsedMilliseconds.ToString() + " ms";
+
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
 
-        private static void Kernel(byte[] result_r, int[] elektron_x, int[] elektron_y, int[] elektron_charge, int[] elektron_move_x, int[] elektron_move_y, int width,int height)
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_charge, int[] electron_move_x, int[] electron_move_y, int width, int height,byte[] r_val,byte[] g_val, byte[]b_val)
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
-            for (int start = start_s; start < result_r.Length/4; start += stride)
+            for (int i = start_s; i < electron_x.Length; i += stride)
+            {
+
+                int el_x = electron_x[i];
+                int el_y = electron_y[i];
+                el_x += electron_move_x[i];
+                el_y += electron_move_y[i];
+
+                if (el_y >= height || el_y < 0)
+                {
+                    electron_move_y[i] *= -1;
+                }
+                else
+                {
+                    electron_y[i] = el_y;
+                }
+                if (el_x >= width || el_x < 0)
+                {
+                    electron_move_x[i] *= -1;
+                }
+                else
+                {
+                    electron_x[i] = el_x;
+                }
+            }
+            for (int start = start_s; start < result_r.Length / 4; start += stride)
             {
                 int x = start % width;
                 int y = start / width;
                 float result = 0;
-                for (int i = 0; i < elektron_charge.Length; i++)
+                for (int i = 0; i < electron_charge.Length; i++)
                 {
-                    if (x == elektron_x[i] && y == elektron_y[i])
+                    if (x == electron_x[i] && y == electron_y[i])
                     {
                         result = 0;
                         break;
                     }
-                    int diffx = x - elektron_x[i];
-                    int diffy = y - elektron_y[i];
-                    float len = (float)Math.Sqrt(diffx * diffx + diffy * diffy);
-                    result += (float)elektron_charge[i] / (len * len);
+                    int diffx = x - electron_x[i];
+                    int diffy = y - electron_y[i];
+                    float len = (float)(diffx * diffx + diffy * diffy);
+                    result += (float)electron_charge[i] / (len);
                 }
+
                 float value = result;
-                float min = -30;
-                float max = 30;
+                float min = -10;
+                float max = 10;
 
                 float f;
                 if (value < min) value = min;
@@ -199,79 +217,80 @@ namespace CPUVErsionTest1._0
                 f = value - min;
                 f /= (max - min);
 
-                float a = (1 - f) / 0.2f;
-                var X = (int)a;
-                var Y = (byte)(255 * (a - X));
-                byte r = 0, g = 0, b = 0;
-                if (X == 0)
-                {
-                    r = 255; g = Y; b = 0;
-                }
-                else if (X == 1)
-                {
-                    r = (byte)(255 - Y); g = 255; b = 0;
-                }
-                else if (X == 2)
-                {
-                    r = 0; g = 255; b = Y;
-                }
-                else if (X == 3)
-                {
-                    r = 0; g = (byte)(255 - Y); b = 255;
-                }
-                else if (X == 4)
-                {
-                    r = Y; g = 0; b = 255;
-                }
-                else
-                {
-                    r = 255; g = 0; b = 255;
-                }
 
-                result_r[4*start] = b;
-                result_r[4*start+1] = g;
-                result_r[4*start+2] = r;
-                result_r[4*start+3] = 255;
+                //float a = (1 - f) / 0.2f;
+                //var X = (int)a;
+                //var Y = (byte)(255 * (a - X));
+                //byte r = 0, g = 0, b = 0;
+                //if (X == 0)
+                //{
+                //    r = 255; g = Y; b = 0;
+                //}
+                //else if (X == 1)
+                //{
+                //    r = (byte)(255 - Y); g = 255; b = 0;
+                //}
+                //else if (X == 2)
+                //{
+                //    r = 0; g = 255; b = Y;
+                //}
+                //else if (X == 3)
+                //{
+                //    r = 0; g = (byte)(255 - Y); b = 255;
+                //}
+                //else if (X == 4)
+                //{
+                //    r = Y; g = 0; b = 255;
+                //}
+                //else
+                //{
+                //    r = 255; g = 0; b = 255;
+                //}
+                //result_r[4 * start] = b;
+                //result_r[4 * start + 1] = g;
+                //result_r[4 * start + 2] = r;
+
+
+
+                result_r[4 * start] = b_val[(int)(f * 1023)];
+                result_r[4 * start + 1] = g_val[(int)(f * 1023)];
+                result_r[4 * start + 2] = r_val[(int)(f * 1023)];
+                result_r[4 * start + 3] = 255;
             }
+
         }
         [GpuManaged]
-        private static void SolveByGpu(Elektrons elektrons_, int width, int height, out byte[] snoop)
+        private static void SolveByGpu(Electrons electrons_, int width, int height, out byte[] snoop, out string str,byte[] r, byte[] g, byte[] b)
         {
+            Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
             var lp = new LaunchParam(128, 1024);
 
-            int[] elektron_x;
-            int[] elektron_y;
-            int[] elektron_charge;
-            int[] elektron_move_x;
-            int[] elektron_move_y;
+            int[] electron_x;
+            int[] electron_y;
+            int[] electron_charge;
+            int[] electron_move_x;
+            int[] electron_move_y;
 
-            elektrons_.ToArray(out elektron_x, out elektron_y, out elektron_charge, out elektron_move_x, out elektron_move_y);
+            electrons_.ToArray(out electron_x, out electron_y, out electron_charge, out electron_move_x, out electron_move_y);
 
 
-            var result_r = new byte[4* width * height];
+            var result_r = new byte[4 * width * height];
 
             int dwidth = width;
             int dheight = height;
+            sw.Start();
+            ///
+            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, electron_charge, electron_move_x, electron_move_y, dwidth, dheight,r,g,b);
+            //gpu.Synchronize();
+            ///
 
-            gpu.Launch(Kernel, lp, result_r, elektron_x, elektron_y, elektron_charge, elektron_move_x, elektron_move_y, dwidth, dheight);
-
-            //Parallel.For(0, result_r.Length - 1, (int i) => //for (int i = 0; i < result_r.Length; i++)
-            //{
-            //    int x = i % width;
-            //    int y = i / width;
-            //    snoop.SetPixel(x, y, result_r[i], result_g[i], result_b[i]);
-            //});
-
-            elektrons_.FromArray(elektron_x, elektron_y, elektron_charge, elektron_move_x, elektron_move_y);
+            electrons_.FromArray(electron_x, electron_y, electron_charge, electron_move_x, electron_move_y);
 
             snoop = result_r;
+            sw.Stop();
 
-        }
-
-        private int FindIfOnVertex(Point p)
-        {
-            return elektrons.FindIndex((Elektron e) => { return Math.Abs(e.x - p.X) < Bias && Math.Abs(e.y - p.Y) < Bias; });
+            str = sw.ElapsedMilliseconds.ToString() + " ms";
         }
 
         private (byte r, byte g, byte b) MapRainbowColor(float value, float max, float min)
@@ -281,7 +300,7 @@ namespace CPUVErsionTest1._0
             if (value < min) value = min;
             if (value > max) value = max;
             f = value - min;
-            f = f / (max - min);
+            f /= (max - min);
 
             float a = (1 - f) / 0.2f;
             var X = (byte)a;
@@ -299,44 +318,124 @@ namespace CPUVErsionTest1._0
             return (r, g, b);
         }
 
-        #region callbacks
-        private void drawing_panel_Paint(object sender, PaintEventArgs e)
+        private void CreateColorValues() 
         {
-            
-            ShowResult(e.Graphics);
-            
+            r_val = new byte[1024];
+            g_val = new byte[1024];
+            b_val = new byte[1024];
+            for(int i = 0; i < 1024; i++)
+            {
+                var res = MapRainbowColor(i, 1023, 0);
+                r_val[i] = res.r;
+                g_val[i] = res.g;
+                b_val[i] = res.b;
+            }
         }
+
+        #region callbacks
 
         private void drawing_panel_SizeChanged(object sender, EventArgs e)
         {
-            values = new float[drawing_panel.Width, drawing_panel.Height];
-        }
-
-        private void drawing_panel_MouseDown(object sender, MouseEventArgs e)
-        {
-            //moving_elektron_indeks = FindIfOnVertex(e.Location);
-        }
-
-        private void drawing_panel_MouseMove(object sender, MouseEventArgs e)
-        {
-            //if (moving_elektron_indeks >= 0)
-            //{
-            //    elektrons[moving_elektron_indeks] = new Elektron(e.X, e.Y, elektrons[moving_elektron_indeks].charge);
-            //    drawing_panel.Invalidate();
-            //}
-        }
-
-        private void drawing_panel_MouseUp(object sender, MouseEventArgs e)
-        {
-            //moving_elektron_indeks = -1;
+            GenerateElectrons();
+            ShowResult();
+            //  values = new float[drawing_panel.Width, drawing_panel.Height];
         }
 
         private void use_gpu_CheckedChanged(object sender, EventArgs e)
         {
             solve_by_GPU = use_gpu.Checked;
-            drawing_panel.Invalidate();
 
         }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            ShowResult();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (!timer1.Enabled)
+                timer1.Start();
+            else
+                timer1.Stop();
+        }
         #endregion
+    }
+
+    class Electrons
+    {
+        public List<int> electrons_x;
+        public List<int> electrons_y;
+        public List<int> electrons_charge;
+        public List<int> electrons_move_x;
+        public List<int> electrons_move_y;
+        public int[] electrons_x_;
+        public int[] electrons_y_;
+        public int[] electrons_charge_;
+        public int[] electrons_move_x_;
+        public int[] electrons_move_y_;
+
+        public Electrons()
+        {
+            electrons_x = new List<int>();
+            electrons_y = new List<int>();
+            electrons_charge = new List<int>();
+            electrons_move_x = new List<int>();
+            electrons_move_y = new List<int>();
+        }
+
+        public void Add(int x, int y, int charge, int move_x, int move_y)
+        {
+            electrons_x.Add(x);
+            electrons_y.Add(y);
+            electrons_charge.Add(charge);
+            electrons_move_x.Add(move_x);
+            electrons_move_y.Add(move_y);
+
+            electrons_x_ = electrons_x.ToArray();
+            electrons_y_ = electrons_y.ToArray();
+            electrons_charge_ = electrons_charge.ToArray();
+            electrons_move_x_ = electrons_move_x.ToArray();
+            electrons_move_y_ = electrons_move_y.ToArray();
+        }
+
+        public void ToArray(out int[] x, out int[] y, out int[] charge, out int[] move_x, out int[] move_y)
+        {
+            //x = electrons_x.ToArray();
+            //y = electrons_y.ToArray();
+            //charge = electrons_charge.ToArray();
+            //move_x = electrons_move_x.ToArray();
+            //move_y = electrons_move_y.ToArray();
+
+            x = electrons_x_;
+            y = electrons_y_;
+            charge = electrons_charge_;
+            move_x = electrons_move_x_;
+            move_y = electrons_move_y_;
+        }
+
+        public void FromArray(int[] x, int[] y, int[] charge, int[] move_x, int[] move_y)
+        {
+            //electrons_x.Clear();
+            //electrons_y.Clear();
+            //electrons_charge.Clear();
+            //electrons_move_x.Clear();
+            //electrons_move_y.Clear();
+            //electrons_x = new List<int>(x);
+            //electrons_y = new List<int>(y);
+            //electrons_charge = new List<int>(charge);
+            //electrons_move_x = new List<int>(move_x);
+            //electrons_move_y = new List<int>(move_y);
+            //electrons_x.AddRange(x);
+            //electrons_y.AddRange(y);
+            //electrons_charge.AddRange(charge);
+            //electrons_move_x.AddRange(move_x);
+            //electrons_move_y.AddRange(move_y);
+            electrons_x_ = x;
+            electrons_y_ = y;
+            electrons_charge_ = charge;
+            electrons_move_x_ = move_x;
+            electrons_move_y_ = move_y;
+        }
     }
 }
