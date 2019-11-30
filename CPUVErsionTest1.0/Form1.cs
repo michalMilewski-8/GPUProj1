@@ -157,7 +157,7 @@ namespace CPUVErsionTest1._0
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
-        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
+        private static void Kernel_move_electrons(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
@@ -191,15 +191,15 @@ namespace CPUVErsionTest1._0
         }
 
 
-        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y,byte[] charge, int width, int height, byte[] r_val, byte[] g_val, byte[] b_val)
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, byte[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
 
-            for (int i= threadIdx.x; i<r_val.Length;i += blockDim.x)
+            for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
             {
                 kolorki[3 * i] = r_val[i];
-                kolorki[3 * i+1] = g_val[i];
-                kolorki[3 * i+2] = b_val[i];
+                kolorki[3 * i + 1] = g_val[i];
+                kolorki[3 * i + 2] = b_val[i];
             }
 
             //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
@@ -208,48 +208,50 @@ namespace CPUVErsionTest1._0
             //    electrons[2 * i + 1] = electron_y[i];
             //}
 
-            for (int start = start_s; start < result_r.Length / 4; start += stride)
+
+            int x = blockIdx.x * blockDim.x + threadIdx.x;
+            int y = blockIdx.y * blockDim.y + threadIdx.y;
+            float result = 0;
+            for (int i = 0; i < electron_x.Length; i++)
             {
-                int x = start % width;
-                int y = start / width;
-                float result = 0;
-                for (int i = 0; i < electron_x.Length; i++)
+                if (x == electron_x[i] && y == electron_y[i])
+                // if (x == electrons[2 * i] && y == electrons[2 * i + 1])
                 {
-                    if (x == electron_x[i] && y == electron_y[i])
-                   // if (x == electrons[2 * i] && y == electrons[2 * i + 1])
-                    {
-                        result = 0;
-                        break;
-                    }
-                    int diffx = x - electron_x[i];
-                    //int diffx = x - electrons[2*i];
-                    int diffy = y - electron_y[i];
-                    //int diffy = y - electrons[2 * i+1];
+                    result = 0;
+                    break;
+                }
+                int diffx = x - electron_x[i];
+                //int diffx = x - electrons[2*i];
+                int diffy = y - electron_y[i];
+                //int diffy = y - electrons[2 * i+1];
+                if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
+                {
                     float len = (float)(diffx * diffx + diffy * diffy);
-                    if(len<10000)
                     result += 1 / (len);
                 }
-
-                float value = result;
-                float min = -0.1f;
-                float max = 0.1f;
-
-                float f;
-                if (value < min) value = min;
-                if (value > max) value = max;
-                f = value - min;
-                f /= (max - min);
-
-                //result_r[4 * start] = b_val[(int)(f * 1023)];
-                //result_r[4 * start + 1] = g_val[(int)(f * 1023)];
-                //result_r[4 * start + 2] = r_val[(int)(f * 1023)];
-                //result_r[4 * start + 3] = 255;
-                int col = ((int)(f * 1023)) * 3 +2;
-                result_r[4 * start] = kolorki[col--];
-                result_r[4 * start + 1] = kolorki[col--];
-                result_r[4 * start + 2] = kolorki[col];
-                result_r[4 * start + 3] = 255;
             }
+
+            float value = result;
+            float min = -0.1f;
+            float max = 0.1f;
+
+            float f;
+            if (value < min) value = min;
+            if (value > max) value = max;
+            f = value - min;
+            f /= (max - min);
+
+            //result_r[4 * start] = b_val[(int)(f * 1023)];
+            //result_r[4 * start + 1] = g_val[(int)(f * 1023)];
+            //result_r[4 * start + 2] = r_val[(int)(f * 1023)];
+            //result_r[4 * start + 3] = 255;
+            int col = ((int)(f * 1023)) * 3 + 2;
+            int start = y * width + x;
+            result_r[4 * start] = kolorki[col--];
+            result_r[4 * start + 1] = kolorki[col--];
+            result_r[4 * start + 2] = kolorki[col];
+            result_r[4 * start + 3] = 255;
+
 
         }
 
@@ -258,15 +260,16 @@ namespace CPUVErsionTest1._0
         {
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
-            var lp = new LaunchParam(128, 1024,r.Length*3/*+electrons_.electrons_y_.Length*2*sizeof(int)*/);
+            var lp = new LaunchParam(128, 1024, r.Length * 3/*+electrons_.electrons_y_.Length*2*sizeof(int)*/);
 
             int[] electron_x;
             int[] electron_y;
             int[] electron_move_x;
             int[] electron_move_y;
+            
             electrons_.ToArray(out electron_x, out electron_y, out electron_move_x, out electron_move_y);
 
-           // int[][] par = new int[4][] { electron_x, electron_y, electron_move_x, electron_move_y };
+            // int[][] par = new int[4][] { electron_x, electron_y, electron_move_x, electron_move_y };
 
             var result_r = new byte[4 * width * height];
 
@@ -274,7 +277,7 @@ namespace CPUVErsionTest1._0
             int dheight = height;
             sw.Start();
             ///
-            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, electron_move_x, electron_move_y, dwidth, dheight, r, g, b);
+            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y,  dwidth, r, g, b);
             sw.Stop();
 
             //Session sesja = new Session(gpu);
@@ -285,7 +288,7 @@ namespace CPUVErsionTest1._0
             electrons_.FromArray(electron_x, electron_y, electron_move_x, electron_move_y);
 
             snoop = result_r;
-            
+
 
             str = sw.ElapsedMilliseconds.ToString() + " ms";
         }
