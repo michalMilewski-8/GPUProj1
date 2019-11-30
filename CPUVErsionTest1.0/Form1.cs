@@ -223,7 +223,7 @@ namespace CPUVErsionTest1._0
                     //int diffx = x - electrons[2*i];
                     int diffy = y - electron_y[i];
                     //int diffy = y - electrons[2 * i+1];
-                    // if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
+                    if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
                     {
                         float len = (float)(diffx * diffx + diffy * diffy);
                         result += (1 / (len)) * charge[i];
