@@ -50,8 +50,9 @@ namespace CPUVErsionTest1._0
                 int y = rand.Next(0, drawing_panel.Height);
                 int move_x = rand.Next(-10, 10);
                 int move_y = rand.Next(-10, 10);
+                short charge = rand.Next(0, 10) % 2 == 0 ? (short)-1 : (short)1;
 
-                electrons.Add(x, y, move_x, move_y);
+                electrons.Add(x, y, move_x, move_y, charge);
             }
             CreateColorValues();
             electrons.MakeArrays();
@@ -157,7 +158,7 @@ namespace CPUVErsionTest1._0
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
-        private static void Kernel_move_electrons(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
+        private static void Kernel_move_electrons(int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
@@ -191,7 +192,7 @@ namespace CPUVErsionTest1._0
         }
 
 
-        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, byte[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
 
@@ -227,7 +228,7 @@ namespace CPUVErsionTest1._0
                 if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
                 {
                     float len = (float)(diffx * diffx + diffy * diffy);
-                    result += 1 / (len);
+                    result += 1 / (len * charge[i]);
                 }
             }
 
@@ -241,17 +242,18 @@ namespace CPUVErsionTest1._0
             f = value - min;
             f /= (max - min);
 
-            //result_r[4 * start] = b_val[(int)(f * 1023)];
-            //result_r[4 * start + 1] = g_val[(int)(f * 1023)];
-            //result_r[4 * start + 2] = r_val[(int)(f * 1023)];
-            //result_r[4 * start + 3] = 255;
+
             int col = ((int)(f * 1023)) * 3 + 2;
+            //int col = ((int)(f * 1023));
             int start = y * width + x;
             result_r[4 * start] = kolorki[col--];
             result_r[4 * start + 1] = kolorki[col--];
             result_r[4 * start + 2] = kolorki[col];
             result_r[4 * start + 3] = 255;
-
+            //result_r[4 * start] = b_val[col];
+            //result_r[4 * start + 1] = g_val[col];
+            //result_r[4 * start + 2] = r_val[col];
+            //result_r[4 * start + 3] = 255;
 
         }
 
@@ -260,14 +262,20 @@ namespace CPUVErsionTest1._0
         {
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
-            var lp = new LaunchParam(128, 1024, r.Length * 3/*+electrons_.electrons_y_.Length*2*sizeof(int)*/);
+            var block_dim = new dim3(32, 32);
+
+            var grid_dim = new dim3(width / 32, height / 32);
+
+            var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3);
+
+            var lp_move = new LaunchParam(electrons_.electrons_y_.Length / 1024 + 1, 1024);
 
             int[] electron_x;
             int[] electron_y;
             int[] electron_move_x;
             int[] electron_move_y;
-            
-            electrons_.ToArray(out electron_x, out electron_y, out electron_move_x, out electron_move_y);
+            short[] charge;
+            electrons_.ToArray(out electron_x, out electron_y, out electron_move_x, out electron_move_y, out charge);
 
             // int[][] par = new int[4][] { electron_x, electron_y, electron_move_x, electron_move_y };
 
@@ -275,17 +283,18 @@ namespace CPUVErsionTest1._0
 
             int dwidth = width;
             int dheight = height;
-            sw.Start();
-            ///
-            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y,  dwidth, r, g, b);
-            sw.Stop();
-
-            //Session sesja = new Session(gpu);
-
-            //sesja.Scan<int[]>(par,par,)
             ///
 
-            electrons_.FromArray(electron_x, electron_y, electron_move_x, electron_move_y);
+            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, charge, dwidth, r, g, b);
+
+
+            gpu.Launch(Kernel_move_electrons, lp_move, electron_x, electron_y, electron_move_x, electron_move_y, dwidth, dheight);
+
+            ///
+
+
+
+            electrons_.FromArray(electron_x, electron_y, electron_move_x, electron_move_y, charge);
 
             snoop = result_r;
 
@@ -381,10 +390,12 @@ namespace CPUVErsionTest1._0
         public List<int> electrons_y;
         public List<int> electrons_move_x;
         public List<int> electrons_move_y;
+        public List<short> electrons_charge;
         public int[] electrons_x_;
         public int[] electrons_y_;
         public int[] electrons_move_x_;
         public int[] electrons_move_y_;
+        public short[] electrons_charge_;
 
         public Electrons()
         {
@@ -392,14 +403,16 @@ namespace CPUVErsionTest1._0
             electrons_y = new List<int>();
             electrons_move_x = new List<int>();
             electrons_move_y = new List<int>();
+            electrons_charge = new List<short>();
         }
 
-        public void Add(int x, int y, int move_x, int move_y)
+        public void Add(int x, int y, int move_x, int move_y, short charge)
         {
             electrons_x.Add(x);
             electrons_y.Add(y);
             electrons_move_x.Add(move_x);
             electrons_move_y.Add(move_y);
+            electrons_charge.Add(charge);
         }
 
         public void MakeArrays()
@@ -408,22 +421,25 @@ namespace CPUVErsionTest1._0
             electrons_y_ = electrons_y.ToArray();
             electrons_move_x_ = electrons_move_x.ToArray();
             electrons_move_y_ = electrons_move_y.ToArray();
+            electrons_charge_ = electrons_charge.ToArray();
         }
 
-        public void ToArray(out int[] x, out int[] y, out int[] move_x, out int[] move_y)
+        public void ToArray(out int[] x, out int[] y, out int[] move_x, out int[] move_y, out short[] charge)
         {
             x = electrons_x_;
             y = electrons_y_;
             move_x = electrons_move_x_;
             move_y = electrons_move_y_;
+            charge = electrons_charge_;
         }
 
-        public void FromArray(int[] x, int[] y, int[] move_x, int[] move_y)
+        public void FromArray(int[] x, int[] y, int[] move_x, int[] move_y, short[] charge)
         {
             electrons_x_ = x;
             electrons_y_ = y;
             electrons_move_x_ = move_x;
             electrons_move_y_ = move_y;
+            electrons_charge_ = charge;
         }
     }
 }
