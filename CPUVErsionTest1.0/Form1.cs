@@ -157,14 +157,12 @@ namespace CPUVErsionTest1._0
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
-
-
-        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height, byte[] r_val, byte[] g_val, byte[] b_val)
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
-            var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            var electrons = (kolorki + r_val.Length * 3).Reinterpret<int>();
+            //
+            //var electrons = (kolorki + r_val.Length * 3).Reinterpret<int>();
             for (int i = start_s; i < electron_x.Length; i += stride)
             {
 
@@ -190,8 +188,14 @@ namespace CPUVErsionTest1._0
                     electron_x[i] = el_x;
                 }
             }
+        }
 
-            for(int i= threadIdx.x; i<r_val.Length;i += blockDim.x)
+
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y,byte[] charge, int width, int height, byte[] r_val, byte[] g_val, byte[] b_val)
+        {
+            var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
+
+            for (int i= threadIdx.x; i<r_val.Length;i += blockDim.x)
             {
                 kolorki[3 * i] = r_val[i];
                 kolorki[3 * i+1] = g_val[i];
