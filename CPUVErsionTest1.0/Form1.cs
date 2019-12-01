@@ -202,7 +202,7 @@ namespace CPUVErsionTest1._0
         private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            var electrons = (kolorki + r_val.Length * 3).Reinterpret<int>();
+            var electrons = (kolorki + r_val.Length*3).Reinterpret<byte>();
             for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
             {
                 kolorki[3 * i] = r_val[i];
@@ -210,33 +210,42 @@ namespace CPUVErsionTest1._0
                 kolorki[3 * i + 2] = b_val[i];
             }
 
+
             //for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
             //{
-            //    electrons[3 * i] = electron_x[i];
-            //    electrons[3 * i + 1] = electron_y[i];
-            //    electrons[3 * i + 2] = (int)charge[i];
+            //    int diffx = blockIdx.x * blockDim.x - electron_x[i];
+            //    int diffy = blockIdx.y * blockDim.y - electron_y[i];
+            //    if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
+            //    {
+            //        electrons[i] = 0;
+            //    }
+            //    else
+            //    {
+            //        electrons[i] = 1;
+            //    }
             //}
-
 
             int x = blockIdx.x * blockDim.x + threadIdx.x;
             int y = blockIdx.y * blockDim.y + threadIdx.y;
+
             float result = 0;
             for (int i = 0; i < electron_x.Length; i++)
             {
-                if (x == electron_x[i] && y == electron_y[i])
-                // if (x == electrons[2 * i] && y == electrons[2 * i + 1])
+                //if (electrons[i] == 1)
                 {
-                    result = 0;
-                    break;
-                }
-                int diffx = x - electron_x[i];
-                //int diffx = x - electrons[2*i];
-                int diffy = y - electron_y[i];
-                //int diffy = y - electrons[2 * i+1];
-                if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
-                {
-                    float len = (float)(diffx * diffx + diffy * diffy);
-                    result += 1 / (len * charge[i]);
+                    if (x == electron_x[i] && y == electron_y[i])
+                    {
+                        result = 0;
+                        break;
+                    }
+                    int diffx = x - electron_x[i];
+                    int diffy = y - electron_y[i];
+
+                    if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
+                    {
+                        float len = (float)(diffx * diffx + diffy * diffy);
+                        result += 1 / (len * charge[i]);
+                    }
                 }
             }
 
@@ -269,7 +278,7 @@ namespace CPUVErsionTest1._0
             var block_dim = new dim3(32, 32);
             var grid_dim = new dim3(width % 32 == 0 ? width / 32: width / 32+1, height % 32 == 0 ? height / 32 : height / 32 + 1);
 
-            var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3/* + electrons_.electrons_y_.Length * 3*/);
+            var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3 + electrons_.electrons_y_.Length);
             var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
 
             int[] electron_x;
@@ -440,7 +449,6 @@ namespace CPUVErsionTest1._0
             electrons_y_ = y;
             electrons_move_x_ = move_x;
             electrons_move_y_ = move_y;
-            electrons_charge_ = charge;
         }
     }
 }
