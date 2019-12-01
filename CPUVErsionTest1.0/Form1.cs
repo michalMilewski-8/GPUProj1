@@ -211,19 +211,19 @@ namespace CPUVErsionTest1._0
             }
 
 
-            //for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
-            //{
-            //    int diffx = blockIdx.x * blockDim.x - electron_x[i];
-            //    int diffy = blockIdx.y * blockDim.y - electron_y[i];
-            //    if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
-            //    {
-            //        electrons[i] = 0;
-            //    }
-            //    else
-            //    {
-            //        electrons[i] = 1;
-            //    }
-            //}
+            for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
+            {
+                int diffx = blockIdx.x * blockDim.x - electron_x[i];
+                int diffy = blockIdx.y * blockDim.y - electron_y[i];
+                if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
+                {
+                    electrons[i] = 0;
+                }
+                else
+                {
+                    electrons[i] = 1;
+                }
+            }
 
             int x = blockIdx.x * blockDim.x + threadIdx.x;
             int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -231,7 +231,7 @@ namespace CPUVErsionTest1._0
             float result = 0;
             for (int i = 0; i < electron_x.Length; i++)
             {
-                //if (electrons[i] == 1)
+                if (electrons[i] == 1)
                 {
                     if (x == electron_x[i] && y == electron_y[i])
                     {
