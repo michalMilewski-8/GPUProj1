@@ -127,6 +127,8 @@
             this.Controls.Add(this.cpu_use);
             this.Controls.Add(this.drawing_panel);
             this.Margin = new System.Windows.Forms.Padding(2);
+            this.MaximumSize = new System.Drawing.Size(800, 860);
+            this.MinimumSize = new System.Drawing.Size(800, 860);
             this.Name = "Form1";
             this.Text = "t";
             ((System.ComponentModel.ISupportInitialize)(this.drawing_panel)).EndInit();
