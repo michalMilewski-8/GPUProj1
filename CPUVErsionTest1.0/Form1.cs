@@ -162,8 +162,15 @@ namespace CPUVErsionTest1._0
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
-            //
-            //var electrons = (kolorki + r_val.Length * 3).Reinterpret<int>();
+            var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
+            var electrons = (kolorki).Reinterpret<int>();
+
+            //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
+            //{
+            //    electrons[2 * i] = electron_x[i];
+            //    electrons[2 * i + 1] = electron_y[i];
+            //}
+
             for (int i = start_s; i < electron_x.Length; i += stride)
             {
 
@@ -195,7 +202,7 @@ namespace CPUVErsionTest1._0
         private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-
+            var electrons = (kolorki + r_val.Length * 3).Reinterpret<int>();
             for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
             {
                 kolorki[3 * i] = r_val[i];
@@ -203,10 +210,11 @@ namespace CPUVErsionTest1._0
                 kolorki[3 * i + 2] = b_val[i];
             }
 
-            //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
+            //for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
             //{
-            //    electrons[2 * i] = electron_x[i];
-            //    electrons[2 * i + 1] = electron_y[i];
+            //    electrons[3 * i] = electron_x[i];
+            //    electrons[3 * i + 1] = electron_y[i];
+            //    electrons[3 * i + 2] = (int)charge[i];
             //}
 
 
@@ -259,21 +267,18 @@ namespace CPUVErsionTest1._0
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
             var block_dim = new dim3(32, 32);
-
             var grid_dim = new dim3(width / 32, height / 32);
 
-            var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3);
-
-            var lp_move = new LaunchParam(electrons_.electrons_y_.Length / 1024 + 1, 1024);
+            var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3/* + electrons_.electrons_y_.Length * 3*/);
+            var lp_move = new LaunchParam(electrons_.electrons_y_.Length / 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
 
             int[] electron_x;
             int[] electron_y;
             int[] electron_move_x;
             int[] electron_move_y;
             short[] charge;
-            electrons_.ToArray(out electron_x, out electron_y, out electron_move_x, out electron_move_y, out charge);
 
-            // int[][] par = new int[4][] { electron_x, electron_y, electron_move_x, electron_move_y };
+            electrons_.ToArray(out electron_x, out electron_y, out electron_move_x, out electron_move_y, out charge);
 
             var result_r = new byte[4 * width * height];
 
