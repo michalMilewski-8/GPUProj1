@@ -48,7 +48,7 @@
             this.drawing_panel.Location = new System.Drawing.Point(2, 36);
             this.drawing_panel.Margin = new System.Windows.Forms.Padding(2);
             this.drawing_panel.Name = "drawing_panel";
-            this.drawing_panel.Size = new System.Drawing.Size(849, 561);
+            this.drawing_panel.Size = new System.Drawing.Size(768, 768);
             this.drawing_panel.TabIndex = 0;
             this.drawing_panel.TabStop = false;
             this.drawing_panel.SizeChanged += new System.EventHandler(this.drawing_panel_SizeChanged);
@@ -61,7 +61,7 @@
             this.cpu_use.AutoSize = true;
             this.cpu_use.Location = new System.Drawing.Point(12, 12);
             this.cpu_use.Name = "cpu_use";
-            this.cpu_use.Size = new System.Drawing.Size(53, 19);
+            this.cpu_use.Size = new System.Drawing.Size(47, 17);
             this.cpu_use.TabIndex = 1;
             this.cpu_use.Text = "CPU";
             this.cpu_use.UseVisualStyleBackColor = true;
@@ -75,7 +75,7 @@
             this.use_gpu.Checked = true;
             this.use_gpu.Location = new System.Drawing.Point(71, 12);
             this.use_gpu.Name = "use_gpu";
-            this.use_gpu.Size = new System.Drawing.Size(54, 19);
+            this.use_gpu.Size = new System.Drawing.Size(48, 17);
             this.use_gpu.TabIndex = 1;
             this.use_gpu.TabStop = true;
             this.use_gpu.Text = "GPU";
@@ -87,7 +87,7 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(191, 12);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(41, 15);
+            this.label1.Size = new System.Drawing.Size(35, 13);
             this.label1.TabIndex = 2;
             this.label1.Text = "label1";
             // 
@@ -119,7 +119,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(852, 598);
+            this.ClientSize = new System.Drawing.Size(784, 811);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.label1);
