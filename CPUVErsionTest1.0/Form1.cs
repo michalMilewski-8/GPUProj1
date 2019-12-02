@@ -1,5 +1,5 @@
 ﻿//#define RANGE = 30
-
+#define magic
 using Alea;
 using Alea.CSharp;
 using Alea.Parallel;
@@ -32,7 +32,6 @@ namespace CPUVErsionTest1._0
 
         private Electrons electrons;
         private int electron_count = 1000;
-        private int max_charge = 100;
         private bool solve_by_GPU = false;
         private byte[] r_val;
         private byte[] g_val;
@@ -162,14 +161,6 @@ namespace CPUVErsionTest1._0
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
-            //var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            //var electrons = (kolorki).Reinterpret<int>();
-
-            //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
-            //{
-            //    electrons[2 * i] = electron_x[i];
-            //    electrons[2 * i + 1] = electron_y[i];
-            //}
 
             for (int i = start_s; i < electron_x.Length; i += stride)
             {
@@ -202,50 +193,32 @@ namespace CPUVErsionTest1._0
         private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            var electrons = (kolorki + r_val.Length*3).Reinterpret<byte>();
+#if magic
             for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
             {
                 kolorki[3 * i] = r_val[i];
                 kolorki[3 * i + 1] = g_val[i];
                 kolorki[3 * i + 2] = b_val[i];
             }
-
-
-            for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
-            {
-                int diffx = blockIdx.x * blockDim.x - electron_x[i];
-                int diffy = blockIdx.y * blockDim.y - electron_y[i];
-                if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
-                {
-                    electrons[i] = 0;
-                }
-                else
-                {
-                    electrons[i] = 1;
-                }
-            }
-
+#endif
             int x = blockIdx.x * blockDim.x + threadIdx.x;
             int y = blockIdx.y * blockDim.y + threadIdx.y;
 
             float result = 0;
             for (int i = 0; i < electron_x.Length; i++)
             {
-                if (electrons[i] == 1)
+                if (x == electron_x[i] && y == electron_y[i])
                 {
-                    if (x == electron_x[i] && y == electron_y[i])
-                    {
-                        result = 0;
-                        break;
-                    }
-                    int diffx = x - electron_x[i];
-                    int diffy = y - electron_y[i];
+                    result = 0;
+                    break;
+                }
+                int diffx = x - electron_x[i];
+                int diffy = y - electron_y[i];
 
-                    if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
-                    {
-                        float len = (float)(diffx * diffx + diffy * diffy);
-                        result += 1 / (len * charge[i]);
-                    }
+                if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
+                {
+                    float len = (float)(diffx * diffx + diffy * diffy);
+                    result += 1 / (len * charge[i]);
                 }
             }
 
@@ -276,10 +249,10 @@ namespace CPUVErsionTest1._0
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
             var block_dim = new dim3(32, 32);
-            var grid_dim = new dim3(width % 32 == 0 ? width / 32: width / 32+1, height % 32 == 0 ? height / 32 : height / 32 + 1);
+            var grid_dim = new dim3(width % 32 == 0 ? width / 32 : width / 32 + 1, height % 32 == 0 ? height / 32 : height / 32 + 1);
 
             var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3 + electrons_.electrons_y_.Length);
-            var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
+            var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0 ? electrons_.electrons_y_.Length % 1024 : electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
 
             int[] electron_x;
             int[] electron_y;
