@@ -162,14 +162,6 @@ namespace CPUVErsionTest1._0
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
             var stride = gridDim.x * blockDim.x;
-            //var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            //var electrons = (kolorki).Reinterpret<int>();
-
-            //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
-            //{
-            //    electrons[2 * i] = electron_x[i];
-            //    electrons[2 * i + 1] = electron_y[i];
-            //}
 
             for (int i = start_s; i < electron_x.Length; i += stride)
             {
@@ -203,18 +195,24 @@ namespace CPUVErsionTest1._0
         {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
             var electrons = (kolorki + r_val.Length*3).Reinterpret<byte>();
-            for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
+
+            int start_s = threadIdx.x + threadIdx.y * blockDim.x;
+            int stride = blockDim.x * blockDim.y;
+
+            for (int i = start_s; i < r_val.Length; i += stride)
             {
                 kolorki[3 * i] = r_val[i];
                 kolorki[3 * i + 1] = g_val[i];
                 kolorki[3 * i + 2] = b_val[i];
             }
 
+            int block_x = blockIdx.x * blockDim.x;
+            int block_y = blockIdx.y * blockDim.y;
 
-            for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
+            for (int i = start_s; i < electron_x.Length; i += stride)
             {
-                int diffx = blockIdx.x * blockDim.x - electron_x[i];
-                int diffy = blockIdx.y * blockDim.y - electron_y[i];
+                int diffx = block_x - electron_x[i];
+                int diffy = block_y - electron_y[i];
                 if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
                 {
                     electrons[i] = 0;
@@ -225,8 +223,8 @@ namespace CPUVErsionTest1._0
                 }
             }
 
-            int x = blockIdx.x * blockDim.x + threadIdx.x;
-            int y = blockIdx.y * blockDim.y + threadIdx.y;
+            int x = block_x + threadIdx.x;
+            int y = block_y + threadIdx.y;
 
             float result = 0;
             for (int i = 0; i < electron_x.Length; i++)
@@ -382,7 +380,6 @@ namespace CPUVErsionTest1._0
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             timer1.Stop();
-            //Thread.Sleep(50);
             int old = electron_count;
             if (int.TryParse(textBox1.Text, out electron_count) && electron_count > 0)
                 GenerateElectrons();
