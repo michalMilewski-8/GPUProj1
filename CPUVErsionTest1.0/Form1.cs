@@ -32,7 +32,6 @@ namespace CPUVErsionTest1._0
 
         private Electrons electrons;
         private int electron_count = 1000;
-        private int max_charge = 100;
         private bool solve_by_GPU = false;
         private byte[] r_val;
         private byte[] g_val;
@@ -158,20 +157,12 @@ namespace CPUVErsionTest1._0
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
-        private static void Kernel_move_electrons(int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
+        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int[] electron_move_x, int[] electron_move_y, int width, int height, byte[] r_val, byte[] g_val, byte[] b_val)
         {
-            var start_s = blockIdx.x * blockDim.x + threadIdx.x;
-            var stride = gridDim.x * blockDim.x;
-            //var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            //var electrons = (kolorki).Reinterpret<int>();
+            var electron_start_s = blockIdx.y * gridDim.x * blockDim.x * blockDim.y + blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+            var electron_stride = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 
-            //for (int i = threadIdx.x; i < electron_x.Length; i += blockDim.x)
-            //{
-            //    electrons[2 * i] = electron_x[i];
-            //    electrons[2 * i + 1] = electron_y[i];
-            //}
-
-            for (int i = start_s; i < electron_x.Length; i += stride)
+            for (int i = electron_start_s; i < electron_x.Length; i += electron_stride)
             {
 
                 int el_x = electron_x[i];
@@ -196,25 +187,25 @@ namespace CPUVErsionTest1._0
                     electron_x[i] = el_x;
                 }
             }
-        }
 
-
-        private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
-        {
             var kolorki = Intrinsic.__address_of_array(__shared__.ExternArray<byte>());
-            var electrons = (kolorki + r_val.Length*3).Reinterpret<byte>();
-            for (int i = threadIdx.x + threadIdx.y * blockDim.x; i < r_val.Length; i += blockDim.x * blockDim.y)
+            var electrons = (kolorki + r_val.Length * 3).Reinterpret<byte>();
+            int stride = blockDim.x * blockDim.y;
+            int start_s = threadIdx.x + threadIdx.y * blockDim.x;
+            for (int i = start_s; i < r_val.Length; i += stride)
             {
                 kolorki[3 * i] = r_val[i];
                 kolorki[3 * i + 1] = g_val[i];
                 kolorki[3 * i + 2] = b_val[i];
             }
 
+            int block_x = blockIdx.x * blockDim.x;
+            int block_y = blockIdx.y * blockDim.y;
 
-            for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < electron_x.Length; i += blockDim.x * blockDim.y)
+            for (int i = start_s; i < electron_x.Length; i += stride)
             {
-                int diffx = blockIdx.x * blockDim.x - electron_x[i];
-                int diffy = blockIdx.y * blockDim.y - electron_y[i];
+                int diffx = block_x - electron_x[i];
+                int diffy = block_y - electron_y[i];
                 if (diffx > 100 || diffx < -100 || diffy > 100 || diffy < -100)
                 {
                     electrons[i] = 0;
@@ -225,10 +216,11 @@ namespace CPUVErsionTest1._0
                 }
             }
 
-            int x = blockIdx.x * blockDim.x + threadIdx.x;
-            int y = blockIdx.y * blockDim.y + threadIdx.y;
+            int x = block_x + threadIdx.x;
+            int y = block_y + threadIdx.y;
 
             float result = 0;
+            //https://devblogs.nvidia.com/using-shared-memory-cuda-cc/
             for (int i = 0; i < electron_x.Length; i++)
             {
                 if (electrons[i] == 1)
@@ -276,10 +268,10 @@ namespace CPUVErsionTest1._0
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
             var block_dim = new dim3(32, 32);
-            var grid_dim = new dim3(width % 32 == 0 ? width / 32: width / 32+1, height % 32 == 0 ? height / 32 : height / 32 + 1);
+            var grid_dim = new dim3(width % 32 == 0 ? width / 32 : width / 32 + 1, height % 32 == 0 ? height / 32 : height / 32 + 1);
 
             var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3 + electrons_.electrons_y_.Length);
-            var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
+            // var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
 
             int[] electron_x;
             int[] electron_y;
@@ -296,10 +288,10 @@ namespace CPUVErsionTest1._0
 
             ///
 
-            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, charge, dwidth, r, g, b);
+            gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, charge, electron_move_x, electron_move_y, dwidth, dheight, r, g, b);
 
 
-            gpu.Launch(Kernel_move_electrons, lp_move, electron_x, electron_y, electron_move_x, electron_move_y, dwidth, dheight);
+            // gpu.Launch(Kernel_move_electrons, lp_move, electron_x, electron_y, electron_move_x, electron_move_y, dwidth, dheight);
 
             ///
 
