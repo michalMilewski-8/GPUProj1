@@ -256,13 +256,19 @@ namespace CPUVErsionTest1._0
             f /= (max - min);
 
 
-            int col = ((int)(f * 1023));
+            
             int start = y * width + x;
-
+            int col = ((int)(f * 1023));
             result_r[4 * start] = b_val[col];
             result_r[4 * start + 1] = g_val[col];
             result_r[4 * start + 2] = r_val[col];
             result_r[4 * start + 3] = 255;
+
+            //int col = ((int)(f * 1023)) * 3 + 2;
+            //result_r[4 * start] = kolorki[col--];
+            //result_r[4 * start + 1] = kolorki[col--];
+            //result_r[4 * start + 2] = kolorki[col];
+            //result_r[4 * start + 3] = 255;
 
         }
 
