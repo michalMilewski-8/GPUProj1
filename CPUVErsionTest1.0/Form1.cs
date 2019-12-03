@@ -196,14 +196,6 @@ namespace CPUVErsionTest1._0
 
             int start_s = threadIdx.x + threadIdx.y * blockDim.x;
             int stride = blockDim.x * blockDim.y;
-
-            for (int i = start_s; i < r_val.Length; i += stride)
-            {
-                kolorki[3 * i] = r_val[i];
-                kolorki[3 * i + 1] = g_val[i];
-                kolorki[3 * i + 2] = b_val[i];
-            }
-
             int block_x = blockIdx.x * blockDim.x;
             int block_y = blockIdx.y * blockDim.y;
 
@@ -220,6 +212,14 @@ namespace CPUVErsionTest1._0
                     electrons[i] = 1;
                 }
             }
+
+            for (int i = start_s; i < r_val.Length; i += stride)
+            {
+                kolorki[3 * i] = r_val[i];
+                kolorki[3 * i + 1] = g_val[i];
+                kolorki[3 * i + 2] = b_val[i];
+            }
+
 
             int x = block_x + threadIdx.x;
             int y = block_y + threadIdx.y;
