@@ -40,8 +40,14 @@
     <Reference Include="Alea, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ba52afc3c2e933d6, processorArchitecture=MSIL">
       <HintPath>..\packages\Alea.3.0.4\lib\net45\Alea.dll</HintPath>
     </Reference>
+    <Reference Include="Alea.CudaToolkit, Version=1.0.9.0, Culture=neutral, PublicKeyToken=ba52afc3c2e933d6, processorArchitecture=MSIL">
+      <HintPath>..\packages\Alea.CudaToolkit.1.0.9\lib\net45\Alea.CudaToolkit.dll</HintPath>
+    </Reference>
     <Reference Include="Alea.IL, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ba52afc3c2e933d6, processorArchitecture=MSIL">
       <HintPath>..\packages\Alea.3.0.4\lib\net45\Alea.IL.dll</HintPath>
+    </Reference>
+    <Reference Include="Alea.Interop, Version=1.0.9.0, Culture=neutral, PublicKeyToken=ba52afc3c2e933d6, processorArchitecture=MSIL">
+      <HintPath>..\packages\Alea.Interop.1.0.9\lib\net45\Alea.Interop.dll</HintPath>
     </Reference>
     <Reference Include="Alea.Parallel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ba52afc3c2e933d6, processorArchitecture=MSIL">
       <HintPath>..\packages\Alea.3.0.4\lib\net45\Alea.Parallel.dll</HintPath>

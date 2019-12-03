@@ -77,6 +77,36 @@ namespace CPUVErsionTest1._0
             return (float)(diffx * diffx + diffy * diffy);
         }
 
+        private void MoveElectrons()
+        {
+            for (int i = 0; i < electrons.electrons_x_.Length; i++)
+            {
+
+                int el_x = electrons.electrons_x_[i];
+                int el_y = electrons.electrons_y_[i];
+                el_x += electrons.electrons_move_x_[i];
+                el_y += electrons.electrons_move_y_[i];
+
+                if (el_y >= drawing_panel.Height || el_y < 0)
+                {
+                    electrons.electrons_move_y_[i] *= -1;
+                }
+                else
+                {
+                    electrons.electrons_y_[i] = el_y;
+                }
+                if (el_x >= drawing_panel.Width || el_x < 0)
+                {
+                    electrons.electrons_move_x_[i] *= -1;
+                }
+                else
+                {
+                    electrons.electrons_x_[i] = el_x;
+                }
+
+            }
+        }
+
         unsafe private void ShowResult()
         {
             Stopwatch sw = new Stopwatch();
@@ -88,36 +118,8 @@ namespace CPUVErsionTest1._0
             if (!solve_by_GPU)
             {
                 pic = new Bitmap(drawing_panel.Width, drawing_panel.Height);
-                for (int i = 0; i < electrons.electrons_x_.Length; i++)
-                {
-
-                    int el_x = electrons.electrons_x_[i];
-                    int el_y = electrons.electrons_y_[i];
-                    el_x += electrons.electrons_move_x_[i];
-                    el_y += electrons.electrons_move_y_[i];
-
-                    if (el_y >= drawing_panel.Height || el_y < 0)
-                    {
-                        electrons.electrons_move_y_[i] *= -1;
-                    }
-                    else
-                    {
-                        electrons.electrons_y_[i] = el_y;
-                    }
-                    if (el_x >= drawing_panel.Width || el_x < 0)
-                    {
-                        electrons.electrons_move_x_[i] *= -1;
-                    }
-                    else
-                    {
-
-                        electrons.electrons_x_[i] = el_x;
-                    }
-
-                }
                 var modified_pic = new BmpPixelSnoop(pic);
                 Parallel.For(0, drawing_panel.Width, i =>
-                //for (int i = 0; i < drawing_panel.Width; i++)
                 {
                     for (int j = 0; j < drawing_panel.Height; j++)
                     {
@@ -131,32 +133,28 @@ namespace CPUVErsionTest1._0
             {
                 byte[] mod;
                 string ts;
+                //
                 SolveByGpu(electrons, drawing_panel.Width, drawing_panel.Height, out mod, out ts, r_val, g_val, b_val);
-
-                // label1.Text = ts;
-
+                //
                 fixed (byte* ptr = mod)
                 {
                     pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4 * drawing_panel.Width,
                                     PixelFormat.Format32bppArgb, new IntPtr(ptr));
                 }
-
-
             }
 
-            //drawing_panel.Image = pic;
-            //pic.Dispose();
-
             sw1.Start();
-            //e.DrawImageUnscaled(pic, 0, 0);
+
             drawing_panel.Image = pic;
-            // pic.Dispose();
+
             sw1.Stop();
+
             label1.Text = sw1.ElapsedMilliseconds.ToString() + " ms";
 
             sw.Stop();
             Text = sw.ElapsedMilliseconds.ToString() + " ms";
         }
+
         private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int[] electron_move_x, int[] electron_move_y, int width, int height, byte[] r_val, byte[] g_val, byte[] b_val)
         {
             var electron_start_s = blockIdx.y * gridDim.x * blockDim.x * blockDim.y + blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
@@ -192,13 +190,6 @@ namespace CPUVErsionTest1._0
             var electrons = (kolorki + r_val.Length * 3).Reinterpret<byte>();
             int stride = blockDim.x * blockDim.y;
             int start_s = threadIdx.x + threadIdx.y * blockDim.x;
-            for (int i = start_s; i < r_val.Length; i += stride)
-            {
-                kolorki[3 * i] = r_val[i];
-                kolorki[3 * i + 1] = g_val[i];
-                kolorki[3 * i + 2] = b_val[i];
-            }
-
             int block_x = blockIdx.x * blockDim.x;
             int block_y = blockIdx.y * blockDim.y;
 
@@ -216,6 +207,12 @@ namespace CPUVErsionTest1._0
                 }
             }
 
+            for (int i = start_s; i < r_val.Length; i += stride)
+            {
+                kolorki[3 * i] = r_val[i];
+                kolorki[3 * i + 1] = g_val[i];
+                kolorki[3 * i + 2] = b_val[i];
+            }
             int x = block_x + threadIdx.x;
             int y = block_y + threadIdx.y;
 
@@ -233,11 +230,8 @@ namespace CPUVErsionTest1._0
                     int diffx = x - electron_x[i];
                     int diffy = y - electron_y[i];
 
-                    if (diffx < 100 && diffx > -100 && diffy < 100 && diffy > -100)
-                    {
-                        float len = (float)(diffx * diffx + diffy * diffy);
-                        result += 1 / (len * charge[i]);
-                    }
+                    float len = (float)(diffx * diffx + diffy * diffy);
+                    result += 1 / (len * charge[i]);
                 }
             }
 
@@ -271,7 +265,6 @@ namespace CPUVErsionTest1._0
             var grid_dim = new dim3(width % 32 == 0 ? width / 32 : width / 32 + 1, height % 32 == 0 ? height / 32 : height / 32 + 1);
 
             var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3 + electrons_.electrons_y_.Length);
-            // var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
 
             int[] electron_x;
             int[] electron_y;
@@ -287,20 +280,11 @@ namespace CPUVErsionTest1._0
             int dheight = height;
 
             ///
-
             gpu.Launch(Kernel, lp, result_r, electron_x, electron_y, charge, electron_move_x, electron_move_y, dwidth, dheight, r, g, b);
-
-
-            // gpu.Launch(Kernel_move_electrons, lp_move, electron_x, electron_y, electron_move_x, electron_move_y, dwidth, dheight);
-
             ///
 
-
             electrons_.FromArray(electron_x, electron_y, electron_move_x, electron_move_y, charge);
-
             snoop = result_r;
-
-
             str = sw.ElapsedMilliseconds.ToString() + " ms";
         }
 
