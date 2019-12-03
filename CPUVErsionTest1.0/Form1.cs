@@ -1,6 +1,4 @@
-﻿//#define RANGE = 30
-
-using Alea;
+﻿using Alea;
 using Alea.CSharp;
 using Alea.Parallel;
 using System;
@@ -32,7 +30,6 @@ namespace CPUVErsionTest1._0
 
         private Electrons electrons;
         private int electron_count = 1000;
-        private int max_charge = 100;
         private bool solve_by_GPU = false;
         private byte[] r_val;
         private byte[] g_val;
@@ -62,7 +59,7 @@ namespace CPUVErsionTest1._0
             float result = 0;
             for (int i = 0; i < electrons_.electrons_x_.Length; i++)
             {
-                result += (float)(1 / (float)Len(x, y, electrons_.electrons_x_[i], electrons_.electrons_y_[i]));
+                result += (float)(1 / (float)Len(x, y, electrons_.electrons_x_[i], electrons_.electrons_y_[i]))*electrons_.electrons_charge_[i];
                 if (x == electrons_.electrons_x_[i] && y == electrons_.electrons_y_[i]) return 0;
             }
             return result;
@@ -78,47 +75,52 @@ namespace CPUVErsionTest1._0
             return (float)(diffx * diffx + diffy * diffy);
         }
 
+        private void MoveElectrons()
+        {
+            for (int i = 0; i < electrons.electrons_x_.Length; i++)
+            {
+
+                int el_x = electrons.electrons_x_[i];
+                int el_y = electrons.electrons_y_[i];
+                el_x += electrons.electrons_move_x_[i];
+                el_y += electrons.electrons_move_y_[i];
+
+                if (el_y >= drawing_panel.Height || el_y < 0)
+                {
+                    electrons.electrons_move_y_[i] *= -1;
+                }
+                else
+                {
+                    electrons.electrons_y_[i] = el_y;
+                }
+                if (el_x >= drawing_panel.Width || el_x < 0)
+                {
+                    electrons.electrons_move_x_[i] *= -1;
+                }
+                else
+                {
+
+                    electrons.electrons_x_[i] = el_x;
+                }
+
+            }
+        }
+
         unsafe private void ShowResult()
         {
             Stopwatch sw = new Stopwatch();
             Stopwatch sw1 = new Stopwatch();
             sw.Start();
             Bitmap pic;
-
-            float max = 1;
+            float max = 0.1f;
+            sw1.Start();
             if (!solve_by_GPU)
             {
+                
                 pic = new Bitmap(drawing_panel.Width, drawing_panel.Height);
-                for (int i = 0; i < electrons.electrons_x_.Length; i++)
-                {
-
-                    int el_x = electrons.electrons_x_[i];
-                    int el_y = electrons.electrons_y_[i];
-                    el_x += electrons.electrons_move_x_[i];
-                    el_y += electrons.electrons_move_y_[i];
-
-                    if (el_y >= drawing_panel.Height || el_y < 0)
-                    {
-                        electrons.electrons_move_y_[i] *= -1;
-                    }
-                    else
-                    {
-                        electrons.electrons_y_[i] = el_y;
-                    }
-                    if (el_x >= drawing_panel.Width || el_x < 0)
-                    {
-                        electrons.electrons_move_x_[i] *= -1;
-                    }
-                    else
-                    {
-
-                        electrons.electrons_x_[i] = el_x;
-                    }
-
-                }
+                MoveElectrons();
                 var modified_pic = new BmpPixelSnoop(pic);
                 Parallel.For(0, drawing_panel.Width, i =>
-                //for (int i = 0; i < drawing_panel.Width; i++)
                 {
                     for (int j = 0; j < drawing_panel.Height; j++)
                     {
@@ -134,25 +136,21 @@ namespace CPUVErsionTest1._0
                 string ts;
                 SolveByGpu(electrons, drawing_panel.Width, drawing_panel.Height, out mod, out ts, r_val, g_val, b_val);
 
-                // label1.Text = ts;
-
+                
                 fixed (byte* ptr = mod)
                 {
                     pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4 * drawing_panel.Width,
                                     PixelFormat.Format32bppArgb, new IntPtr(ptr));
                 }
-
+                
 
             }
-
-            //drawing_panel.Image = pic;
-            //pic.Dispose();
-
-            sw1.Start();
-            //e.DrawImageUnscaled(pic, 0, 0);
-            drawing_panel.Image = pic;
-            // pic.Dispose();
             sw1.Stop();
+
+
+            drawing_panel.Image = pic;
+
+            
             label1.Text = sw1.ElapsedMilliseconds.ToString() + " ms";
 
             sw.Stop();
@@ -274,10 +272,10 @@ namespace CPUVErsionTest1._0
             Stopwatch sw = new Stopwatch();
             var gpu = Gpu.Default;
             var block_dim = new dim3(32, 32);
-            var grid_dim = new dim3(width % 32 == 0 ? width / 32: width / 32+1, height % 32 == 0 ? height / 32 : height / 32 + 1);
+            var grid_dim = new dim3(width / 32,  height / 32);
 
             var lp = new LaunchParam(grid_dim, block_dim, r.Length * 3 + electrons_.electrons_y_.Length);
-            var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024 == 0? electrons_.electrons_y_.Length % 1024: electrons_.electrons_y_.Length % 1024 + 1, 1024/*, electrons_.electrons_y_.Length * 2*/);
+            var lp_move = new LaunchParam(electrons_.electrons_y_.Length % 1024, 1024);
 
             int[] electron_x;
             int[] electron_y;
@@ -353,20 +351,21 @@ namespace CPUVErsionTest1._0
 
         private void drawing_panel_SizeChanged(object sender, EventArgs e)
         {
-            GenerateElectrons();
-            ShowResult();
-            //  values = new float[drawing_panel.Width, drawing_panel.Height];
+            if (drawing_panel.Width != 0 && drawing_panel.Height != 0)
+            {
+                GenerateElectrons();
+                ShowResult();
+            }
         }
 
         private void use_gpu_CheckedChanged(object sender, EventArgs e)
         {
             solve_by_GPU = use_gpu.Checked;
-
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            ShowResult();
+                ShowResult();
         }
 
         private void button1_Click(object sender, EventArgs e)

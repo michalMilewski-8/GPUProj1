@@ -61,7 +61,7 @@
             this.cpu_use.AutoSize = true;
             this.cpu_use.Location = new System.Drawing.Point(12, 12);
             this.cpu_use.Name = "cpu_use";
-            this.cpu_use.Size = new System.Drawing.Size(47, 17);
+            this.cpu_use.Size = new System.Drawing.Size(54, 20);
             this.cpu_use.TabIndex = 1;
             this.cpu_use.Text = "CPU";
             this.cpu_use.UseVisualStyleBackColor = true;
@@ -75,7 +75,7 @@
             this.use_gpu.Checked = true;
             this.use_gpu.Location = new System.Drawing.Point(71, 12);
             this.use_gpu.Name = "use_gpu";
-            this.use_gpu.Size = new System.Drawing.Size(48, 17);
+            this.use_gpu.Size = new System.Drawing.Size(55, 20);
             this.use_gpu.TabIndex = 1;
             this.use_gpu.TabStop = true;
             this.use_gpu.Text = "GPU";
@@ -87,7 +87,7 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(191, 12);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(35, 13);
+            this.label1.Size = new System.Drawing.Size(45, 16);
             this.label1.TabIndex = 2;
             this.label1.Text = "label1";
             // 
@@ -110,7 +110,7 @@
             // 
             this.textBox1.Location = new System.Drawing.Point(359, 10);
             this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(142, 20);
+            this.textBox1.Size = new System.Drawing.Size(142, 22);
             this.textBox1.TabIndex = 4;
             this.textBox1.Text = "1000";
             this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
@@ -126,7 +126,10 @@
             this.Controls.Add(this.use_gpu);
             this.Controls.Add(this.cpu_use);
             this.Controls.Add(this.drawing_panel);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Margin = new System.Windows.Forms.Padding(2);
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "Form1";
             this.Text = "t";
             ((System.ComponentModel.ISupportInitialize)(this.drawing_panel)).EndInit();
