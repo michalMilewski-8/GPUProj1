@@ -255,7 +255,6 @@ namespace CPUVErsionTest1._0
             result_r[4 * start + 3] = 255;
 
         }
-
         [GpuManaged]
         private static void SolveByGpu(Electrons electrons_, int width, int height, out byte[] snoop, out string str, byte[] r, byte[] g, byte[] b)
         {
