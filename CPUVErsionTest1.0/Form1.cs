@@ -17,7 +17,6 @@ using System.Windows.Forms;
 
 namespace CPUVErsionTest1._0
 {
-
     public partial class Form1 : Form
     {
         public Form1()
@@ -36,24 +35,10 @@ namespace CPUVErsionTest1._0
         private byte[] b_val;
 
 
-        private void GenerateElectrons()
-        {
-            electrons = new Electrons();
-            Random rand = new Random();
-            for (int i = 0; i < electron_count; i++)
-            {
 
-                int x = rand.Next(0, drawing_panel.Width);
-                int y = rand.Next(0, drawing_panel.Height);
-                int move_x = rand.Next(-10, 10);
-                int move_y = rand.Next(-10, 10);
-                short charge = rand.Next(0, 10) % 2 == 0 ? (short)-1 : (short)1;
+        #region CPU_func
+        private float max = 0.1f;
 
-                electrons.Add(x, y, move_x, move_y, charge);
-            }
-            CreateColorValues();
-            electrons.MakeArrays();
-        }
         private float ComputeCharge(int x, int y, Electrons electrons_)
         {
             float result = 0;
@@ -106,56 +91,24 @@ namespace CPUVErsionTest1._0
             }
         }
 
-        unsafe private void ShowResult()
+        private void DrawCPU(Bitmap pic)
         {
-            Stopwatch sw = new Stopwatch();
-            Stopwatch sw1 = new Stopwatch();
-            sw.Start();
-            Bitmap pic;
-            float max = 0.1f;
-            sw1.Start();
-            if (!solve_by_GPU)
+            MoveElectrons();
+            var modified_pic = new BmpPixelSnoop(pic);
+            Parallel.For(0, drawing_panel.Width, i =>
             {
-                
-                pic = new Bitmap(drawing_panel.Width, drawing_panel.Height);
-                MoveElectrons();
-                var modified_pic = new BmpPixelSnoop(pic);
-                Parallel.For(0, drawing_panel.Width, i =>
+                for (int j = 0; j < drawing_panel.Height; j++)
                 {
-                    for (int j = 0; j < drawing_panel.Height; j++)
-                    {
-                        var col = MapRainbowColor(ComputeCharge(i, j, electrons), max, -max);
-                        modified_pic.SetPixel(i, j, col.r, col.g, col.b);
-                    }
-                });
-                modified_pic.Dispose();
-            }
-            else
-            {
-                byte[] mod;
-                string ts;
-                SolveByGpu(electrons, drawing_panel.Width, drawing_panel.Height, out mod, out ts, r_val, g_val, b_val);
-
-                
-                fixed (byte* ptr = mod)
-                {
-                    pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4 * drawing_panel.Width,
-                                    PixelFormat.Format32bppArgb, new IntPtr(ptr));
+                    var col = MapRainbowColor(ComputeCharge(i, j, electrons), max, -max);
+                    modified_pic.SetPixel(i, j, col.r, col.g, col.b);
                 }
-                
-
-            }
-            sw1.Stop();
-
-
-            drawing_panel.Image = pic;
-
-            
-            label1.Text = sw1.ElapsedMilliseconds.ToString() + " ms";
-
-            sw.Stop();
-            Text = sw.ElapsedMilliseconds.ToString() + " ms";
+            });
+            modified_pic.Dispose();
         }
+        #endregion
+ 
+
+        #region GPU_func
         private static void Kernel_move_electrons(int[] electron_x, int[] electron_y, int[] electron_move_x, int[] electron_move_y, int width, int height)
         {
             var start_s = blockIdx.x * blockDim.x + threadIdx.x;
@@ -187,7 +140,6 @@ namespace CPUVErsionTest1._0
                 }
             }
         }
-
 
         private static void Kernel(byte[] result_r, int[] electron_x, int[] electron_y, short[] charge, int width, byte[] r_val, byte[] g_val, byte[] b_val)
         {
@@ -313,7 +265,59 @@ namespace CPUVErsionTest1._0
 
             str = sw.ElapsedMilliseconds.ToString() + " ms";
         }
+        #endregion
 
+
+        #region helper_methods
+        private void GenerateElectrons()
+        {
+            electrons = new Electrons();
+            Random rand = new Random();
+            for (int i = 0; i < electron_count; i++)
+            {
+
+                int x = rand.Next(0, drawing_panel.Width);
+                int y = rand.Next(0, drawing_panel.Height);
+                int move_x = rand.Next(-10, 10);
+                int move_y = rand.Next(-10, 10);
+                short charge = rand.Next(0, 10) % 2 == 0 ? (short)-1 : (short)1;
+
+                electrons.Add(x, y, move_x, move_y, charge);
+            }
+            CreateColorValues();
+            electrons.MakeArrays();
+        }
+        unsafe private void ShowResult()
+        {
+            Stopwatch sw = new Stopwatch();
+            Stopwatch sw1 = new Stopwatch();
+            sw.Start();
+            Bitmap pic;
+            sw1.Start();
+            if (!solve_by_GPU)
+            {
+                pic = new Bitmap(drawing_panel.Width, drawing_panel.Height);
+                DrawCPU(pic);
+            }
+            else
+            {
+                byte[] mod;
+                string ts;
+                SolveByGpu(electrons, drawing_panel.Width, drawing_panel.Height, out mod, out ts, r_val, g_val, b_val);
+
+                fixed (byte* ptr = mod)
+                {
+                    pic = new Bitmap(drawing_panel.Width, drawing_panel.Height, 4 * drawing_panel.Width,
+                                    PixelFormat.Format32bppArgb, new IntPtr(ptr));
+                }
+            }
+            sw1.Stop();
+
+            drawing_panel.Image = pic;
+            label1.Text = sw1.ElapsedMilliseconds.ToString() + " ms";
+            sw.Stop();
+            Text = sw.ElapsedMilliseconds.ToString() + " ms";
+        }
         private (byte r, byte g, byte b) MapRainbowColor(float value, float max, float min)
         {
             byte r = 0, g = 0, b = 0;
@@ -338,7 +342,6 @@ namespace CPUVErsionTest1._0
 
             return (r, g, b);
         }
-
         private void CreateColorValues()
         {
             r_val = new byte[1024];
@@ -352,6 +355,8 @@ namespace CPUVErsionTest1._0
                 b_val[i] = res.b;
             }
         }
+        #endregion
+
 
         #region callbacks
 
@@ -394,63 +399,5 @@ namespace CPUVErsionTest1._0
         }
 
         #endregion
-    }
-
-    class Electrons
-    {
-        public List<int> electrons_x;
-        public List<int> electrons_y;
-        public List<int> electrons_move_x;
-        public List<int> electrons_move_y;
-        public List<short> electrons_charge;
-        public int[] electrons_x_;
-        public int[] electrons_y_;
-        public int[] electrons_move_x_;
-        public int[] electrons_move_y_;
-        public short[] electrons_charge_;
-
-        public Electrons()
-        {
-            electrons_x = new List<int>();
-            electrons_y = new List<int>();
-            electrons_move_x = new List<int>();
-            electrons_move_y = new List<int>();
-            electrons_charge = new List<short>();
-        }
-
-        public void Add(int x, int y, int move_x, int move_y, short charge)
-        {
-            electrons_x.Add(x);
-            electrons_y.Add(y);
-            electrons_move_x.Add(move_x);
-            electrons_move_y.Add(move_y);
-            electrons_charge.Add(charge);
-        }
-
-        public void MakeArrays()
-        {
-            electrons_x_ = electrons_x.ToArray();
-            electrons_y_ = electrons_y.ToArray();
-            electrons_move_x_ = electrons_move_x.ToArray();
-            electrons_move_y_ = electrons_move_y.ToArray();
-            electrons_charge_ = electrons_charge.ToArray();
-        }
-
-        public void ToArray(out int[] x, out int[] y, out int[] move_x, out int[] move_y, out short[] charge)
-        {
-            x = electrons_x_;
-            y = electrons_y_;
-            move_x = electrons_move_x_;
-            move_y = electrons_move_y_;
-            charge = electrons_charge_;
-        }
-
-        public void FromArray(int[] x, int[] y, int[] move_x, int[] move_y, short[] charge)
-        {
-            electrons_x_ = x;
-            electrons_y_ = y;
-            electrons_move_x_ = move_x;
-            electrons_move_y_ = move_y;
-        }
     }
 }

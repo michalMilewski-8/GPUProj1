@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapOperator.cs" />
+    <Compile Include="Electrons.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
